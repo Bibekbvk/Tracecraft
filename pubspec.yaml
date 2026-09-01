@@ -1,0 +1,63 @@
+name: trace_craft
+description: "TraceCraft - AR Photo Tracing & Camera Lucida Drawing Assistant"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  camera: ^0.11.0+2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.2
+  google_mobile_ads: ^5.2.0
+  http: ^1.2.2
+  crypto: ^3.0.3
+  image: ^4.3.0
+  image_picker: ^1.1.2
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  cached_network_image: ^3.4.1
+  flutter_staggered_grid_view: ^0.7.0
+  wakelock_plus: ^1.2.8
+  permission_handler: ^11.3.1
+  google_fonts: ^6.2.1
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  share_plus: ^10.1.4
+  flutter_rating_bar: ^4.0.1
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icons/app_icon.png"
+    background_color: "#0F1117"
+    theme_color: "#6C5CE7"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/sample_sketches/

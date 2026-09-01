@@ -1,0 +1,8 @@
+# Example key.properties for Google Play Release Signing
+# Copy this file to android/key.properties and replace with your actual values:
+# DO NOT commit android/key.properties with real passwords to public git!
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=C:\\Users\\Asus\\upload-keystore.jks
