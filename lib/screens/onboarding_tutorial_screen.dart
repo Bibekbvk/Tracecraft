@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:trace_craft/screens/auth_screen.dart';
 import 'package:trace_craft/services/database_service.dart';
 
 class OnboardingTutorialScreen extends StatefulWidget {
@@ -56,7 +57,10 @@ class _OnboardingTutorialScreenState extends State<OnboardingTutorialScreen> {
       if (widget.isFromDrawer) {
         Navigator.pop(context);
       } else {
-        Navigator.pushReplacementNamed(context, '/');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthScreen(isFromDrawer: false)),
+        );
       }
     }
   }

@@ -6,6 +6,7 @@ import 'package:trace_craft/models/search_image_model.dart';
 import 'package:trace_craft/models/session_model.dart';
 import 'package:trace_craft/models/user_settings_model.dart';
 import 'package:trace_craft/services/ad_service.dart';
+import 'package:trace_craft/services/firebase_auth_service.dart';
 
 void main() {
   setUpAll(() async {
@@ -216,6 +217,55 @@ void main() {
       };
       expect(feedbackMap['category'], 'Feature Request');
       expect(feedbackMap['rating'], 5.0);
+    });
+  });
+
+  group('Authentication & 6-Digit OTP Verification Tests', () {
+    test('sendVerificationOtp generates a valid 6-digit numerical code', () async {
+      final result = await FirebaseAuthService.sendVerificationOtp('artist@tracecraft.app');
+      expect(result.isSuccess, true);
+      expect(result.debugOtpCode, isNotNull);
+      expect(result.debugOtpCode!.length, 6);
+      expect(int.tryParse(result.debugOtpCode!), isNotNull);
+    });
+
+    test('sendVerificationOtp rejects invalid email addresses', () async {
+      final result = await FirebaseAuthService.sendVerificationOtp('invalid-email');
+      expect(result.isSuccess, false);
+      expect(result.errorMessage, contains('valid email'));
+    });
+
+    test('verifyOtpAndRegister fails with incorrect OTP', () async {
+      await FirebaseAuthService.sendVerificationOtp('testuser@tracecraft.app');
+      final result = await FirebaseAuthService.verifyOtpAndRegister(
+        email: 'testuser@tracecraft.app',
+        enteredOtp: '000000',
+        password: 'securePassword123',
+      );
+      expect(result.isSuccess, false);
+      expect(result.errorMessage, contains('Invalid 6-digit code'));
+    });
+
+    test('verifyOtpAndRegister succeeds with correct 6-digit OTP and creates profile', () async {
+      final otpRes = await FirebaseAuthService.sendVerificationOtp('creative.artist@tracecraft.app');
+      final correctOtp = otpRes.debugOtpCode!;
+
+      final regResult = await FirebaseAuthService.verifyOtpAndRegister(
+        email: 'creative.artist@tracecraft.app',
+        enteredOtp: correctOtp,
+        password: 'myArtPassword2026',
+      );
+
+      expect(regResult.isSuccess, true);
+      expect(regResult.userEmail, 'creative.artist@tracecraft.app');
+      expect(FirebaseAuthService.isGuest, false);
+      expect(FirebaseAuthService.currentUserEmail, 'creative.artist@tracecraft.app');
+    });
+
+    test('signInAsGuest switches to guest state and clears email', () async {
+      await FirebaseAuthService.signInAsGuest();
+      expect(FirebaseAuthService.isGuest, true);
+      expect(FirebaseAuthService.currentUserEmail, isNull);
     });
   });
 }

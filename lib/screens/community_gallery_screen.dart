@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:trace_craft/models/gallery_post_model.dart';
+import 'package:trace_craft/screens/auth_screen.dart';
 import 'package:trace_craft/services/firebase_auth_service.dart';
 import 'package:trace_craft/services/firestore_service.dart';
 import 'package:trace_craft/services/storage_service.dart';
@@ -36,7 +37,7 @@ class _CommunityGalleryScreenState extends ConsumerState<CommunityGalleryScreen>
 
   Future<void> _initUserAndLoadPosts() async {
     setState(() => _isLoading = true);
-    final uid = await FirebaseAuthService.signInAnonymously();
+    final uid = FirebaseAuthService.getCurrentUserId();
     final posts = await FirestoreService.fetchPosts(filter: _currentFilter);
 
     if (mounted) {
@@ -164,6 +165,55 @@ class _CommunityGalleryScreenState extends ConsumerState<CommunityGalleryScreen>
 
   /// Open Upload Artwork Flow
   Future<void> _openUploadModal() async {
+    // Restrict guest users from publishing to community showcase
+    if (FirebaseAuthService.isGuest) {
+      final shouldSignIn = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF181B24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.lock_person_rounded, color: Color(0xFF6C5CE7)),
+              SizedBox(width: 10),
+              Text('Account Required', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: const Text(
+            'You are currently in Guest Mode. Guests can trace photos and save local projects, but creating or signing into an account is required to publish drawings to the Community Showcase.',
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Continue as Guest', style: TextStyle(color: Colors.white54)),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF6C5CE7)),
+              icon: const Icon(Icons.login_rounded, size: 16),
+              label: const Text('Sign In / Register'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldSignIn == true && mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthScreen(isFromDrawer: true)),
+        );
+        setState(() {
+          _currentUserId = FirebaseAuthService.getCurrentUserId();
+        });
+        if (FirebaseAuthService.isGuest) return;
+      } else {
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: const Color(0xFF181B24),

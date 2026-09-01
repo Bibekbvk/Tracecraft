@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:trace_craft/models/user_settings_model.dart';
 import 'package:trace_craft/screens/about_screen.dart';
+import 'package:trace_craft/screens/auth_screen.dart';
 import 'package:trace_craft/screens/contact_screen.dart';
 import 'package:trace_craft/screens/feedback_screen.dart';
 import 'package:trace_craft/screens/onboarding_tutorial_screen.dart';
 import 'package:trace_craft/screens/settings_screen.dart';
 import 'package:trace_craft/services/database_service.dart';
+import 'package:trace_craft/services/firebase_auth_service.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
 
   @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  @override
   Widget build(BuildContext context) {
     final UserSettings settings = DatabaseService.getUserSettings();
+    final isGuest = FirebaseAuthService.isGuest;
+    final userEmail = FirebaseAuthService.currentUserEmail;
 
     return Drawer(
       backgroundColor: const Color(0xFF141720),
@@ -43,18 +53,28 @@ class AppDrawer extends StatelessWidget {
                       child: const Icon(Icons.draw_rounded, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'TraceCraft',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-                        ),
-                        Text(
-                          'Camera Lucida Assistant',
-                          style: TextStyle(fontSize: 11, color: Colors.white70),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isGuest ? 'Guest Artist' : (userEmail?.split('@').first ?? 'Artist'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            isGuest ? '⚡ Drawing Mode (No Gallery)' : (userEmail ?? 'Verified Account'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white70),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -93,6 +113,42 @@ class AppDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
               children: [
+                if (isGuest)
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.person_add_alt_1_rounded,
+                    iconColor: const Color(0xFF00CEC9),
+                    title: 'Sign In / Register with OTP',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AuthScreen(isFromDrawer: true)),
+                      );
+                      setState(() {});
+                    },
+                  )
+                else
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.logout_rounded,
+                    iconColor: const Color(0xFFFF7675),
+                    title: 'Sign Out ($userEmail)',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await FirebaseAuthService.signOut();
+                      setState(() {});
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Signed out. Reverted to Guest Mode.')),
+                        );
+                      }
+                    },
+                  ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Divider(color: Colors.white12),
+                ),
                 _buildDrawerItem(
                   context,
                   icon: Icons.school_rounded,

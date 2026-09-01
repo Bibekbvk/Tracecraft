@@ -5,6 +5,7 @@ import 'package:trace_craft/app.dart';
 import 'package:trace_craft/services/ad_service.dart';
 import 'package:trace_craft/services/camera_service.dart';
 import 'package:trace_craft/services/database_service.dart';
+import 'package:trace_craft/services/firebase_auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,9 @@ void main() async {
 
   // Initialize Database (Hive + TypeAdapters for Session & UserSettings)
   await DatabaseService.init();
+
+  // Initialize Auth Service
+  await FirebaseAuthService.init();
 
   // Initialize Camera hardware stub
   await CameraService.initCameras();
