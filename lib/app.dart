@@ -12,7 +12,7 @@ class TraceCraftApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp(
-      title: 'Nepal Alert',
+      title: 'TraceCraft - Camera Lucida Tracing',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

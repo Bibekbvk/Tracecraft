@@ -1,4 +1,4 @@
-# 🚀 Nepal Alert — Complete Play Store Deployment Handover & Project Summary
+# 🚀 TraceCraft — Complete Play Store Deployment Handover & Project Summary
 
 This document preserves all project configurations, keystore credentials, branch states, security specifications, and step-by-step Google Play Console deployment guidelines for seamless continuation across accounts.
 
@@ -7,8 +7,8 @@ This document preserves all project configurations, keystore credentials, branch
 ## 📌 1. Repository & Package Architecture
 
 * **Remote Repository**: [https://github.com/Bibekbvk/Tracecraft.git](https://github.com/Bibekbvk/Tracecraft.git)
-* **Package Name (Application ID)**: `com.nepalalert.app`
-* **App Display Name**: `Nepal Alert`
+* **Package Name (Application ID)**: `com.tracecraft.app.trace_craft`
+* **App Display Name**: `TraceCraft`
 * **Active Branches**:
   * `main` — Production-ready code synced with the latest release features.
   * `feature/production-release` — Dedicated release branch matching `main`.
@@ -35,7 +35,7 @@ The app is configured for Google Play App Signing with the following production 
 
 | Asset | Path | Specs / Dimensions | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Android App Bundle (.aab)** | `build/app/outputs/bundle/release/app-release.aab` | **~54.6 MB** (Signed Release) | Upload directly to Google Play Console Releases |
+| **Android App Bundle (.aab)** | `build/app/outputs/bundle/release/app-release.aab` | **54.6 MB** (Signed Release) | Upload directly to Google Play Console Releases |
 | **App Icon** | `assets/images/tracecraft_app_logo.png` | **512 x 512 px (PNG 32-bit)** | Play Store App Icon |
 | **Feature Graphic** | `assets/images/play_store_feature_graphic.png` | **1024 x 500 px (PNG)** | Play Store Header Banner |
 
@@ -90,7 +90,7 @@ When you are ready to deploy to your Play Console account, follow these exact st
 ### **Step 1: Create App in Google Play Console**
 1. Log into [Google Play Console](https://play.google.com/console).
 2. Click **Create app**:
-   * **App name**: `Nepal Alert`
+   * **App name**: `TraceCraft - AR Drawing & Tracing`
    * **Default language**: `English (United States)`
    * **App or game**: `App`
    * **Free or paid**: `Free`
@@ -99,9 +99,9 @@ When you are ready to deploy to your Play Console account, follow these exact st
 ### **Step 2: Set Up Main Store Listing**
 1. Navigate to **Grow** -> **Store presence** -> **Main store listing**.
 2. **Short description** (up to 80 chars):
-   > `Smart AR Optical Assistant & Creative Hub with camera tracing tools.`
+   > `Trace and sketch any image on paper using Camera Lucida AR optical overlays.`
 3. **Full description** (up to 4000 chars):
-   > `Nepal Alert is a smart AR creative assistant equipped with optical Camera Lucida tracing technology. Mount your device above paper, adjust opacity, extract high-contrast line-art outlines with edge detection, and sketch with pinpoint proportion grid guides. Search millions of reference images across the internet or import your own photos from your gallery.`
+   > `TraceCraft turns your phone into an optical Camera Lucida drawing assistant. Mount your device above paper, adjust opacity, extract high-contrast line-art outlines with edge detection, and sketch with pinpoint proportion grid guides. Search millions of reference images across the internet or import your own photos from your gallery.`
 4. **Graphics Assets**:
    * **App icon**: Upload `assets/images/tracecraft_app_logo.png` (512x512).
    * **Feature graphic**: Upload `assets/images/play_store_feature_graphic.png` (1024x500).
