@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive/hive.dart';
+import 'package:trace_craft/services/security_service.dart';
 
 class AuthResult {
   final bool isSuccess;
@@ -22,7 +22,7 @@ class AuthResult {
 class OtpSendResult {
   final bool isSuccess;
   final String? errorMessage;
-  final String? debugOtpCode; // For local/offline testing & immediate demo feedback
+  final String? debugOtpCode;
 
   OtpSendResult({
     required this.isSuccess,
@@ -68,15 +68,31 @@ class FirebaseAuthService {
     }
   }
 
-  /// Sends a 6-digit verification OTP to the specified email address
+  /// Sends a 6-digit verification OTP to the specified email address with Rate Limiting & Anti-Brute-Force
   static Future<OtpSendResult> sendVerificationOtp(String email) async {
-    final cleanEmail = email.trim().toLowerCase();
+    final cleanEmail = SecurityService.sanitizeText(email.trim().toLowerCase(), maxLength: 100);
     if (cleanEmail.isEmpty || !cleanEmail.contains('@') || !cleanEmail.contains('.')) {
       return OtpSendResult(isSuccess: false, errorMessage: 'Please enter a valid email address.');
     }
 
+    // 1. Anti-Brute-Force check: is this email locked out?
+    if (SecurityService.isOtpLockedOut(cleanEmail)) {
+      return OtpSendResult(
+        isSuccess: false,
+        errorMessage: 'Too many failed verification attempts. For account security, please wait 15 minutes before requesting a new code.',
+      );
+    }
+
+    // 2. Sliding-Window Rate Limit check (max 3 OTP requests / minute)
+    if (!SecurityService.checkRateLimit('otp_send_$cleanEmail', maxRequests: 3, window: const Duration(minutes: 1))) {
+      return OtpSendResult(
+        isSuccess: false,
+        errorMessage: 'OTP rate limit reached. Please wait 60 seconds before requesting another code.',
+      );
+    }
+
     try {
-      // Generate secure 6-digit OTP (e.g. 749201)
+      // Generate secure 6-digit cryptographic OTP (e.g. 749201)
       final random = Random.secure();
       final otp = (100000 + random.nextInt(900000)).toString();
 
@@ -103,8 +119,16 @@ class FirebaseAuthService {
     required String enteredOtp,
     required String password,
   }) async {
-    final cleanEmail = email.trim().toLowerCase();
+    final cleanEmail = SecurityService.sanitizeText(email.trim().toLowerCase(), maxLength: 100);
     final cleanOtp = enteredOtp.trim();
+
+    // 1. Anti-Brute-Force check
+    if (SecurityService.isOtpLockedOut(cleanEmail)) {
+      return AuthResult(
+        isSuccess: false,
+        errorMessage: 'Account locked due to multiple failed verification attempts. Please wait 15 minutes.',
+      );
+    }
 
     if (_pendingOtpEmail == null || _pendingOtpEmail != cleanEmail) {
       return AuthResult(isSuccess: false, errorMessage: 'No verification code requested for this email.');
@@ -115,12 +139,16 @@ class FirebaseAuthService {
     }
 
     if (_pendingOtpCode != cleanOtp) {
+      SecurityService.recordOtpFailure(cleanEmail);
       return AuthResult(isSuccess: false, errorMessage: 'Invalid 6-digit code. Please check and try again.');
     }
 
     if (password.length < 6) {
       return AuthResult(isSuccess: false, errorMessage: 'Password must be at least 6 characters long.');
     }
+
+    // Success - reset any failed OTP counters
+    SecurityService.resetOtpFailures(cleanEmail);
 
     try {
       String uid = 'artist_${cleanEmail.hashCode.abs()}';
@@ -152,12 +180,15 @@ class FirebaseAuthService {
       _pendingOtpCode = null;
       _pendingOtpExpiry = null;
 
-      // Persist registered credentials
+      // Rotate session token
+      SecurityService.rotateSession();
+
+      // Persist registered credentials with encrypted password obfuscation
       if (_authBox != null) {
         await _authBox!.put('isGuest', false);
         await _authBox!.put('userEmail', cleanEmail);
         await _authBox!.put('userId', uid);
-        await _authBox!.put('pwd_${cleanEmail.hashCode}', password);
+        await _authBox!.put('pwd_${cleanEmail.hashCode}', SecurityService.obfuscateKey(password));
       }
 
       return AuthResult(isSuccess: true, userEmail: cleanEmail, userId: uid);
@@ -171,9 +202,14 @@ class FirebaseAuthService {
     required String email,
     required String password,
   }) async {
-    final cleanEmail = email.trim().toLowerCase();
+    final cleanEmail = SecurityService.sanitizeText(email.trim().toLowerCase(), maxLength: 100);
     if (cleanEmail.isEmpty || password.isEmpty) {
       return AuthResult(isSuccess: false, errorMessage: 'Please enter both email and password.');
+    }
+
+    // Rate Limiting check on login attempts
+    if (!SecurityService.checkRateLimit('auth_login_$cleanEmail', maxRequests: 5, window: const Duration(minutes: 1))) {
+      return AuthResult(isSuccess: false, errorMessage: 'Too many login attempts. Please wait 1 minute before trying again.');
     }
 
     try {
@@ -196,17 +232,23 @@ class FirebaseAuthService {
         }
       }
 
-      // Validate locally if previously registered
+      // Validate locally if previously registered (with encrypted key de-obfuscation support)
       if (_authBox != null) {
-        final storedPwd = _authBox!.get('pwd_${cleanEmail.hashCode}');
-        if (storedPwd != null && storedPwd != password) {
-          return AuthResult(isSuccess: false, errorMessage: 'Incorrect password for this account.');
+        final stored = _authBox!.get('pwd_${cleanEmail.hashCode}');
+        if (stored != null) {
+          final decrypted = SecurityService.deobfuscateKey(stored);
+          if (decrypted != password && stored != password) {
+            return AuthResult(isSuccess: false, errorMessage: 'Incorrect password for this account.');
+          }
         }
       }
 
       _isGuest = false;
       _userEmail = cleanEmail;
       _cachedUserId = uid;
+
+      // Rotate session token
+      SecurityService.rotateSession();
 
       if (_authBox != null) {
         await _authBox!.put('isGuest', false);
@@ -225,6 +267,8 @@ class FirebaseAuthService {
     _isGuest = true;
     _userEmail = null;
     _cachedUserId = 'guest_artist_${DateTime.now().millisecondsSinceEpoch % 100000}';
+
+    SecurityService.rotateSession();
 
     if (_authBox != null) {
       await _authBox!.put('isGuest', true);

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -421,6 +422,36 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with WidgetsBindi
     debugPrint('Session $_sessionId persisted to Hive.');
   }
 
+  /// Switch or import a new reference image directly from device's Photo Gallery
+  Future<void> _importNewImageFromGallery() async {
+    HapticFeedback.lightImpact();
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
+      if (picked != null && mounted) {
+        setState(() {
+          _imagePathOrUrl = picked.path;
+          _cachedLineArtPath = null;
+          _isEdgeDetectionEnabled = false;
+        });
+        _debounceSaveSession();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🖼️ New reference image loaded from gallery!'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Color(0xFF6C5CE7),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open photo gallery: $e')),
+        );
+      }
+    }
+  }
+
   /// Marks the drawing session as complete, updates streak & total completions in UserSettings
   Future<void> _finishDrawing() async {
     final matrixList = _transformController.value.storage.toList();
@@ -615,6 +646,12 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with WidgetsBindi
                       ],
                     ),
                   ),
+                ),
+                // Import Image from Photo Gallery
+                IconButton(
+                  icon: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 24),
+                  tooltip: 'Import Photo from Gallery',
+                  onPressed: _importNewImageFromGallery,
                 ),
                 // Finish / Complete Drawing Button
                 IconButton(

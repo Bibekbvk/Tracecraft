@@ -7,6 +7,7 @@ import 'package:trace_craft/models/session_model.dart';
 import 'package:trace_craft/models/user_settings_model.dart';
 import 'package:trace_craft/services/ad_service.dart';
 import 'package:trace_craft/services/firebase_auth_service.dart';
+import 'package:trace_craft/services/security_service.dart';
 
 void main() {
   setUpAll(() async {
@@ -266,6 +267,64 @@ void main() {
       await FirebaseAuthService.signInAsGuest();
       expect(FirebaseAuthService.isGuest, true);
       expect(FirebaseAuthService.currentUserEmail, isNull);
+    });
+  });
+
+  group('Security Layer & Hardening Tests', () {
+    test('Session ID generation creates cryptographically unique tokens with prefix', () {
+      final s1 = SecurityService.getSessionId();
+      final s2 = SecurityService.rotateSession();
+
+      expect(s1, startsWith('tc_sess_'));
+      expect(s2, startsWith('tc_sess_'));
+      expect(s1, isNot(equals(s2)));
+    });
+
+    test('Sliding-window rate limiter throttles excessive calls', () {
+      const action = 'test_rate_limited_action';
+      // First 3 should pass
+      for (int i = 0; i < 3; i++) {
+        expect(SecurityService.checkRateLimit(action, maxRequests: 3), true);
+      }
+      // 4th should be throttled
+      expect(SecurityService.checkRateLimit(action, maxRequests: 3), false);
+    });
+
+    test('Anti-brute-force locks OTP after 5 consecutive failures', () {
+      const email = 'victim@tracecraft.app';
+      expect(SecurityService.isOtpLockedOut(email), false);
+
+      for (int i = 0; i < 5; i++) {
+        SecurityService.recordOtpFailure(email);
+      }
+      expect(SecurityService.isOtpLockedOut(email), true);
+
+      SecurityService.resetOtpFailures(email);
+      expect(SecurityService.isOtpLockedOut(email), false);
+    });
+
+    test('HTTPS enforcement transforms insecure HTTP URLs to HTTPS', () {
+      const insecure = 'http://api.pexels.com/v1/search?query=cat';
+      final secure = SecurityService.enforceHttps(insecure);
+      expect(secure, 'https://api.pexels.com/v1/search?query=cat');
+      expect(SecurityService.isSecureUrl(secure), true);
+    });
+
+    test('Secret key obfuscation and de-obfuscation round-trip', () {
+      const rawSecret = 'sk_live_99482751928471928472918';
+      final encrypted = SecurityService.obfuscateKey(rawSecret);
+      expect(encrypted, isNot(equals(rawSecret)));
+
+      final decrypted = SecurityService.deobfuscateKey(encrypted);
+      expect(decrypted, rawSecret);
+    });
+
+    test('Input sanitization strips malicious script and tags', () {
+      const malicious = '<script>alert("hacked")</script><b>Trace Lion</b>';
+      final cleaned = SecurityService.sanitizeText(malicious);
+      expect(cleaned, isNot(contains('<script>')));
+      expect(cleaned, isNot(contains('<b>')));
+      expect(cleaned, contains('Trace Lion'));
     });
   });
 }

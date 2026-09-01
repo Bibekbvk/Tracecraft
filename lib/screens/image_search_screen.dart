@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:trace_craft/models/search_image_model.dart';
 import 'package:trace_craft/screens/tracing_screen.dart';
 import 'package:trace_craft/services/image_search_service.dart';
+import 'package:trace_craft/services/security_service.dart';
 import 'package:trace_craft/widgets/bottom_banner_ad_widget.dart';
 
 class ImageSearchScreen extends ConsumerStatefulWidget {
@@ -17,6 +21,7 @@ class ImageSearchScreen extends ConsumerStatefulWidget {
 class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   String _selectedCategory = 'All';
   String _currentQuery = '';
@@ -38,6 +43,38 @@ class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Pick custom image from device's Photo Gallery
+  Future<void> _importImageFromGallery() async {
+    HapticFeedback.lightImpact();
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 95,
+      );
+
+      if (picked != null && mounted) {
+        final rawTitle = picked.name.isNotEmpty ? picked.name.split('.').first : 'Imported Drawing';
+        final title = SecurityService.sanitizeText(rawTitle, maxLength: 50);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TracingScreen(
+              title: title.isNotEmpty ? title : 'Imported Photo',
+              imagePathOrUrl: picked.path,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open photo gallery: $e')),
+        );
+      }
+    }
   }
 
   void _onScroll() {
@@ -137,6 +174,23 @@ class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
             ),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton.tonalIcon(
+              onPressed: _importImageFromGallery,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00CEC9).withValues(alpha: 0.18),
+                foregroundColor: const Color(0xFF00CEC9),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.add_photo_alternate_rounded, size: 16),
+              label: const Text('Import', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -180,70 +234,132 @@ class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
             ),
           ),
 
-          // 2. HERO CAMERA QUICK START BANNER
+          // 2. DUAL HERO ACTION SECTION (Import Gallery & Camera Tracing)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TracingScreen(
-                      title: 'Live Camera Tracing',
-                      imagePathOrUrl: 'https://images.pexels.com/photos/1858175/pexels-photo-1858175.jpeg?auto=compress&cs=tinysrgb&w=800',
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C5CE7), Color(0xFF00CEC9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Start Optical Camera Tracing',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+            child: Row(
+              children: [
+                // Card 1: Import from Photo Gallery
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _importImageFromGallery,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00CEC9), Color(0xFF0984E3)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00CEC9).withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
                           ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Mount phone above paper to trace overlays',
-                            style: TextStyle(fontSize: 11, color: Colors.white),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.white24,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.photo_library_rounded, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Import Gallery',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Pick own photos',
+                                  style: TextStyle(fontSize: 10, color: Colors.white70),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+
+                // Card 2: Camera Tracing
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TracingScreen(
+                            title: 'Live Camera Tracing',
+                            imagePathOrUrl: 'https://images.pexels.com/photos/1858175/pexels-photo-1858175.jpeg?auto=compress&cs=tinysrgb&w=800',
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C5CE7), Color(0xFF8E44AD)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.white24,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Camera Tracing',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Live AR overlay',
+                                  style: TextStyle(fontSize: 10, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
