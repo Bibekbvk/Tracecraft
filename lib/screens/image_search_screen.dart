@@ -171,7 +171,7 @@ class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
             Icon(Icons.draw_rounded, color: Color(0xFF00CEC9), size: 22),
             SizedBox(width: 8),
             Text(
-              'TraceCraft Library',
+              'Nepal Alert Library',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],

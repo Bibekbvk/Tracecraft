@@ -145,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                         // Title
                         Text(
-                          'TraceCraft',
+                          'Nepal Alert',
                           style: GoogleFonts.outfit(
                             fontSize: 34,
                             fontWeight: FontWeight.bold,
@@ -157,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                         // Subtitle
                         Text(
-                          'Camera Lucida Drawing Assistant',
+                          'Smart AR Assistant & Creative Hub',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: const Color(0xFF00CEC9),
@@ -198,7 +198,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Loading Optical Tracing Engine... ${(progress * 100).toInt()}%',
+                                      'Loading Smart Engine... ${(progress * 100).toInt()}%',
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w500,
@@ -226,7 +226,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             right: 0,
             child: Center(
               child: Text(
-                'TraceCraft v1.0.0 • Hardware-Accelerated AR',
+                'Nepal Alert v1.0.0 • Hardware-Accelerated Engine',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: Colors.white24,
