@@ -19,3 +19,9 @@
 -keep class com.google.firebase.** { *; }
 -keepattributes *Annotation*
 -keepattributes Signature
+
+# Flutter Deferred Components & Google Play Core
+-dontwarn com.google.android.play.core.**
+-dontwarn io.flutter.embedding.**
+-keep class com.google.android.play.core.** { *; }
+
