@@ -9,6 +9,7 @@ import 'package:trace_craft/models/search_image_model.dart';
 import 'package:trace_craft/screens/tracing_screen.dart';
 import 'package:trace_craft/services/image_search_service.dart';
 import 'package:trace_craft/services/security_service.dart';
+import 'package:trace_craft/widgets/app_drawer.dart';
 import 'package:trace_craft/widgets/bottom_banner_ad_widget.dart';
 
 class ImageSearchScreen extends ConsumerStatefulWidget {
@@ -154,6 +155,7 @@ class _ImageSearchScreenState extends ConsumerState<ImageSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF181B24),
         elevation: 0,

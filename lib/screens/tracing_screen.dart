@@ -18,6 +18,7 @@ import 'package:trace_craft/services/database_service.dart';
 import 'package:trace_craft/services/edge_detection_service.dart';
 import 'package:trace_craft/widgets/glass_card_widget.dart';
 import 'package:trace_craft/widgets/grid_overlay_widget.dart';
+import 'package:trace_craft/widgets/non_skippable_ad_dialog.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
   final String? imagePathOrUrl;
@@ -121,10 +122,30 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with WidgetsBindi
 
     // Listen to transform changes for debounced persistence
     _transformController.addListener(_onTransformChanged);
+
+    // Start in-session 10-second non-skippable sponsor video ad timer (every 4 mins)
+    _startDrawingAdTimer();
+  }
+
+  Timer? _inSessionDrawingAdTimer;
+
+  void _startDrawingAdTimer() {
+    _inSessionDrawingAdTimer?.cancel();
+    _inSessionDrawingAdTimer = Timer.periodic(const Duration(minutes: 4), (timer) {
+      if (!mounted) return;
+      if (!AdService.isBannerRemovedFor24Hours()) {
+        NonSkippableAdDialog.show(
+          context,
+          title: 'Sponsored Creative Partner',
+          sponsorName: 'TraceCraft Art Studio',
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _inSessionDrawingAdTimer?.cancel();
     _debounceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
@@ -769,6 +790,20 @@ class _TracingScreenState extends ConsumerState<TracingScreen> with WidgetsBindi
                             );
                           }
                           await AdService.incrementSaveAndShowInterstitial();
+                        },
+                      ),
+                      const SizedBox(height: 6),
+
+                      // 10-Second Non-Skippable Video Ad (Reward Button)
+                      IconButton(
+                        icon: const Icon(Icons.ondemand_video_rounded, color: Color(0xFFFF7675), size: 20),
+                        tooltip: 'Watch 10s Video Ad (Remove Ads 24h)',
+                        onPressed: () {
+                          NonSkippableAdDialog.show(
+                            context,
+                            title: 'Sponsored Video Ad',
+                            sponsorName: 'TraceCraft Creative Studio',
+                          );
                         },
                       ),
                     ],

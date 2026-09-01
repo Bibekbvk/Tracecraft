@@ -13,6 +13,7 @@ import 'package:trace_craft/screens/auth_screen.dart';
 import 'package:trace_craft/services/firebase_auth_service.dart';
 import 'package:trace_craft/services/firestore_service.dart';
 import 'package:trace_craft/services/storage_service.dart';
+import 'package:trace_craft/widgets/app_drawer.dart';
 import 'package:trace_craft/widgets/bottom_banner_ad_widget.dart';
 
 class CommunityGalleryScreen extends ConsumerStatefulWidget {
@@ -365,6 +366,7 @@ class _CommunityGalleryScreenState extends ConsumerState<CommunityGalleryScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF181B24),
         elevation: 0,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:trace_craft/models/user_settings_model.dart';
 import 'package:trace_craft/services/database_service.dart';
+import 'package:trace_craft/widgets/app_drawer.dart';
 import 'package:trace_craft/widgets/glass_card_widget.dart';
 
 class StreakScreen extends ConsumerWidget {
@@ -12,6 +13,7 @@ class StreakScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF181B24),
         elevation: 0,

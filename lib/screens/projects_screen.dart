@@ -9,6 +9,7 @@ import 'package:trace_craft/models/session_model.dart';
 import 'package:trace_craft/models/user_settings_model.dart';
 import 'package:trace_craft/screens/tracing_screen.dart';
 import 'package:trace_craft/services/database_service.dart';
+import 'package:trace_craft/widgets/app_drawer.dart';
 import 'package:trace_craft/widgets/glass_card_widget.dart';
 
 class ProjectsScreen extends ConsumerWidget {
@@ -18,6 +19,7 @@ class ProjectsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF181B24),
         elevation: 0,

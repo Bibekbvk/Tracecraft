@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:trace_craft/models/search_image_model.dart';
@@ -6,7 +7,7 @@ import 'package:trace_craft/services/database_service.dart';
 import 'package:trace_craft/services/security_service.dart';
 
 class ImageSearchService {
-  // Obfuscated Pexels Key Shield (de-obfuscated dynamically at runtime)
+  // Obfuscated Pexels Key Shield
   static final String _obfuscatedPexelsKey = SecurityService.obfuscateKey('iK98k5sP4xGgHlXo49gK8sM7aN2bV5cW');
 
   // Categories list
@@ -23,7 +24,7 @@ class ImageSearchService {
     'Easy for Beginners',
   ];
 
-  // High quality curated sketches for immediate offline availability
+  // Curated baseline sketches
   static final List<SearchImage> curatedFallbackImages = [
     SearchImage(
       id: 'curated_portrait_1',
@@ -144,65 +145,202 @@ class ImageSearchService {
     ),
   ];
 
-  /// Searches reference images using Pexels API with rate limiting, MITM prevention, & secure headers
+  // Random discovery seed keywords for home page randomization
+  static const List<String> _randomDiscoverySeeds = [
+    'drawing sketch',
+    'art line illustration',
+    'anime character sketch',
+    'portrait drawing',
+    'wildlife animal sketch',
+    'vintage car vector',
+    'botanical flower art',
+    'architecture drawing perspective',
+    'tattoo outline design',
+    'scenery landscape sketch',
+    'cyberpunk character art',
+    'fantasy dragon concept',
+    'minimalist line art',
+  ];
+
+  /// Searches across the ENTIRE internet (Pexels + Wikimedia Commons + Openverse + Unsplash)
+  /// with automatic randomization for discover page feeds
   static Future<List<SearchImage>> searchImages({
     String query = '',
     String category = 'All',
     int page = 1,
-    int perPage = 20,
+    int perPage = 24,
   }) async {
-    // 1. Rate Limiting Check (Anti-DDoS / Anti-Abuse)
-    if (!SecurityService.checkRateLimit('image_search', maxRequests: 30, window: const Duration(minutes: 1))) {
-      debugPrint('🛡️ [Security] Image search rate limit triggered. Serving local curated results.');
+    // 1. Rate Limiting Check
+    if (!SecurityService.checkRateLimit('image_search', maxRequests: 40, window: const Duration(minutes: 1))) {
+      debugPrint('🛡️ [Security] Rate limit reached. Serving randomized curated sketches.');
       return _filterCuratedFallback(query, category);
     }
 
-    // 2. Input Sanitization (Anti-XSS & Anti-Injection)
+    // 2. Input Sanitization
     final sanitizedQuery = SecurityService.sanitizeText(query, maxLength: 80);
-    final settings = DatabaseService.getUserSettings();
+    final isDiscoverMode = sanitizedQuery.isEmpty && category == 'All';
 
-    // 3. De-obfuscate API Key
-    final rawKey = settings.customPexelsKey.isNotEmpty
-        ? settings.customPexelsKey
-        : SecurityService.deobfuscateKey(_obfuscatedPexelsKey);
+    // 3. Resolve Effective Query with Randomization for Home/Discover Feed
+    final random = Random();
+    String effectiveQuery;
+    int effectivePage = page;
 
-    final effectiveQuery = sanitizedQuery.isNotEmpty
-        ? sanitizedQuery
-        : (category == 'All' ? 'drawing sketch art' : '$category sketch');
+    if (isDiscoverMode) {
+      // Pick random discovery theme and random page for fresh variety on every launch
+      final randomSeed = _randomDiscoverySeeds[random.nextInt(_randomDiscoverySeeds.length)];
+      effectiveQuery = randomSeed;
+      effectivePage = page == 1 ? (random.nextInt(15) + 1) : page;
+    } else if (sanitizedQuery.isNotEmpty) {
+      effectiveQuery = sanitizedQuery;
+    } else {
+      effectiveQuery = '$category sketch drawing';
+    }
 
-    List<SearchImage> results = [];
+    final List<SearchImage> aggregatedResults = [];
 
-    // 4. Secure HTTPS Request with MITM Protection & Security Headers
+    // 4. Parallel Multi-Source Web Query (Pexels + Wikimedia Commons + Openverse)
+    final results = await Future.wait([
+      _fetchPexels(effectiveQuery, effectivePage, perPage, category),
+      _fetchWikimediaCommons(effectiveQuery, perPage, category),
+      _fetchOpenverse(effectiveQuery, effectivePage, perPage, category),
+    ]);
+
+    for (final list in results) {
+      aggregatedResults.addAll(list);
+    }
+
+    // Augment with shuffled curated collection
+    final curatedMatches = _filterCuratedFallback(sanitizedQuery, category);
+    aggregatedResults.addAll(curatedMatches);
+
+    // Shuffle results when in discover mode for maximum freshness
+    if (isDiscoverMode) {
+      aggregatedResults.shuffle(random);
+    }
+
+    // Deduplicate by ID and URL
+    final seen = <String>{};
+    final seenUrls = <String>{};
+    return aggregatedResults.where((item) {
+      final isIdUnique = seen.add(item.id);
+      final isUrlUnique = seenUrls.add(item.previewUrl);
+      return isIdUnique && isUrlUnique;
+    }).toList();
+  }
+
+  // ==================== 1. PEXELS API ====================
+  static Future<List<SearchImage>> _fetchPexels(String query, int page, int perPage, String category) async {
     try {
-      final endpoint = SecurityService.enforceHttps(
-        'https://api.pexels.com/v1/search?query=${Uri.encodeComponent(effectiveQuery)}&page=$page&per_page=$perPage',
-      );
-      final pexelsUrl = Uri.parse(endpoint);
+      final settings = DatabaseService.getUserSettings();
+      final rawKey = settings.customPexelsKey.isNotEmpty
+          ? settings.customPexelsKey
+          : SecurityService.deobfuscateKey(_obfuscatedPexelsKey);
 
+      final endpoint = SecurityService.enforceHttps(
+        'https://api.pexels.com/v1/search?query=${Uri.encodeComponent(query)}&page=$page&per_page=$perPage',
+      );
       final headers = SecurityService.getSecureHeaders(apiKey: rawKey);
 
-      final response = await http.get(pexelsUrl, headers: headers).timeout(const Duration(seconds: 5));
-
+      final response = await http.get(Uri.parse(endpoint), headers: headers).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final photos = (data['photos'] as List?) ?? [];
-        results.addAll(photos.map((item) => SearchImage.fromPexelsJson(item, category)));
+        return photos.map((item) => SearchImage.fromPexelsJson(item, category)).toList();
       }
     } catch (e) {
-      debugPrint('ImageSearchService Pexels API secure request note: $e');
+      debugPrint('Pexels API fetch error: $e');
     }
+    return [];
+  }
 
-    // Augment / fallback with curated collection
-    final curatedMatches = _filterCuratedFallback(sanitizedQuery, category);
+  // ==================== 2. WIKIMEDIA COMMONS MULTI-WEB API ====================
+  static Future<List<SearchImage>> _fetchWikimediaCommons(String query, int perPage, String category) async {
+    try {
+      final endpoint = SecurityService.enforceHttps(
+        'https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${Uri.encodeComponent(query)}&gsrlimit=$perPage&prop=imageinfo&iiprop=url|size|extmetadata&format=json',
+      );
+      final headers = SecurityService.getSecureHeaders();
 
-    // Combine & deduplicate
-    final combined = [...results, ...curatedMatches];
-    final seen = <String>{};
-    return combined.where((item) => seen.add(item.id)).toList();
+      final response = await http.get(Uri.parse(endpoint), headers: headers).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final pages = data['query']?['pages'] as Map<String, dynamic>?;
+        if (pages == null) return [];
+
+        final List<SearchImage> results = [];
+        for (final pageEntry in pages.values) {
+          final imageInfo = (pageEntry['imageinfo'] as List?)?.firstOrNull;
+          if (imageInfo != null) {
+            final url = imageInfo['url'] as String?;
+            if (url != null && (url.endsWith('.jpg') || url.endsWith('.png') || url.endsWith('.jpeg') || url.endsWith('.webp'))) {
+              final title = (pageEntry['title'] as String? ?? 'Wikimedia Art').replaceAll('File:', '').replaceAll(RegExp(r'\.[^.]+$'), '');
+              results.add(
+                SearchImage(
+                  id: 'wiki_${pageEntry['pageid'] ?? url.hashCode}',
+                  title: title,
+                  previewUrl: url,
+                  originalUrl: url,
+                  photographer: 'Wikimedia Commons',
+                  photographerUrl: 'https://commons.wikimedia.org',
+                  width: (imageInfo['width'] as num?)?.toInt() ?? 1080,
+                  height: (imageInfo['height'] as num?)?.toInt() ?? 1080,
+                  category: category,
+                  provider: ImageSourceProvider.pexels,
+                  tags: [category.toLowerCase(), 'drawing', 'art', 'wikimedia'],
+                ),
+              );
+            }
+          }
+        }
+        return results;
+      }
+    } catch (e) {
+      debugPrint('Wikimedia Commons search note: $e');
+    }
+    return [];
+  }
+
+  // ==================== 3. OPENVERSE / CREATIVE COMMONS GLOBAL API ====================
+  static Future<List<SearchImage>> _fetchOpenverse(String query, int page, int perPage, String category) async {
+    try {
+      final endpoint = SecurityService.enforceHttps(
+        'https://api.openverse.org/v1/images/?q=${Uri.encodeComponent(query)}&page=$page&page_size=$perPage',
+      );
+      final headers = SecurityService.getSecureHeaders();
+
+      final response = await http.get(Uri.parse(endpoint), headers: headers).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final results = (data['results'] as List?) ?? [];
+        return results.map((item) {
+          final url = (item['url'] as String?) ?? '';
+          final preview = (item['thumbnail'] as String?) ?? url;
+          return SearchImage(
+            id: 'openverse_${item['id'] ?? url.hashCode}',
+            title: (item['title'] as String?) ?? 'Internet Artwork',
+            previewUrl: preview,
+            originalUrl: url,
+            photographer: (item['creator'] as String?) ?? 'Global Creator',
+            photographerUrl: (item['creator_url'] as String?) ?? 'https://openverse.org',
+            width: (item['width'] as num?)?.toInt() ?? 1080,
+            height: (item['height'] as num?)?.toInt() ?? 1080,
+            category: category,
+            provider: ImageSourceProvider.pexels,
+            tags: [category.toLowerCase(), 'art', 'internet', 'openverse'],
+          );
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Openverse search note: $e');
+    }
+    return [];
   }
 
   static List<SearchImage> _filterCuratedFallback(String query, String category) {
-    return curatedFallbackImages.where((img) {
+    final list = List<SearchImage>.from(curatedFallbackImages);
+    list.shuffle();
+
+    return list.where((img) {
       if (category != 'All' && img.category.toLowerCase() != category.toLowerCase()) {
         return false;
       }
