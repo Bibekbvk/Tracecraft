@@ -18,12 +18,12 @@ class AdService {
   static bool _isRewardedLoading = false;
 
   // Set to true when releasing to Google Play / App Store with your real AdMob Unit IDs
-  static bool useProductionAds = false;
+  static bool useProductionAds = true;
 
   // Real Production Ad Unit IDs (replace with your AdMob Console IDs)
-  static const String prodAndroidBannerId = 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY';
-  static const String prodAndroidInterstitialId = 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY';
-  static const String prodAndroidRewardedId = 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY';
+  static const String prodAndroidBannerId = 'ca-app-pub-3634340207015593/9947032927';
+  static const String prodAndroidInterstitialId = 'ca-app-pub-3634340207015593/7269627641';
+  static const String prodAndroidRewardedId = 'ca-app-pub-3634340207015593/4828286818';
 
   static const String prodIOSBannerId = 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY';
   static const String prodIOSInterstitialId = 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY';
